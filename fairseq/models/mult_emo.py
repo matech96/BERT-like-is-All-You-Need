@@ -55,7 +55,8 @@ class RobertaEMOModel(FairseqLanguageModel):
 
         if self.args.a_only or self.args.all_in:
            
-            self.roberta_vqwav2vec = RobertaModel.from_pretrained('/hpc/gsir059/phd1st/trained_ssl/wav2vec/vq-wav2vec-Kmeans-Roberta', checkpoint_file='bert_kmeans.pt')
+            # self.roberta_vqwav2vec = RobertaModel.from_pretrained('/hpc/gsir059/phd1st/trained_ssl/wav2vec/vq-wav2vec-Kmeans-Roberta', checkpoint_file='bert_kmeans.pt')
+            self.roberta_vqwav2vec = RobertaModel.from_pretrained('pretrained_ssl/roberta.large/', checkpoint_file='bert_kmeans.pt')
 
             # for param in  self.roberta_vqwav2vec.parameters():
             #     param.requires_grad = False
@@ -385,6 +386,7 @@ class RobertaEMOClassificationHead(nn.Module):
     
         x =Final# features[:, 0, :]  # take <s> token (equiv. to [CLS])
         x = self.dropout(x)
+        # print(x.shape, (self.out_proj.in_features, self.out_proj.out_features))
         x = self.out_proj(x)
        
         return x

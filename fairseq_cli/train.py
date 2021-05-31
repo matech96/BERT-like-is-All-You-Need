@@ -323,6 +323,10 @@ def distributed_main(i, args, start_rank=0):
 def cli_main(modify_parser=None):
     parser = options.get_training_parser()
     args = options.parse_args_and_arch(parser, modify_parser=modify_parser)
+    # args.a_only = False
+    # args.t_only = True
+    # args.all_in = False
+    
 
     if args.distributed_init_method is None:
         distributed_utils.infer_init_method(args)

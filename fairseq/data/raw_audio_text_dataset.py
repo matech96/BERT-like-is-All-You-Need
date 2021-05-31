@@ -136,7 +136,8 @@ class RawAudioTextDataset(FairseqDataset):
 
         
 
-                assert items_a[0].split('.')[0] == items_t[0].split('.')[0] , "misalignment of data"
+                # print(f"{items_a[0].split('.')[0]}; {items_t[0].split('.')[0]}")
+                assert items_a[0].split('.')[0] == items_t[0].split('.')[0] , f"misalignment of data: {items_a[0].split('.')[0]} == {items_t[0].split('.')[0]} - {manifest_audio} - {manifest_text}"
 
 
     

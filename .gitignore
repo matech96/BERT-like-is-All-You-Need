@@ -1,0 +1,9 @@
+*.pyc
+*.pt
+pretrained_ssl/*
+iemocap_data/*
+iemocap_org/*
+build/*
+mosi_data/*
+*.zip
+*.so
