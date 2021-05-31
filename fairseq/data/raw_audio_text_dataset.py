@@ -29,6 +29,7 @@ class RawAudioTextDataset(FairseqDataset):
 
         self.fnames_audio = []
         self.fnames_text = []
+        self.fnames_videoemb = []
         self.sizes = []
 
   
@@ -73,6 +74,7 @@ class RawAudioTextDataset(FairseqDataset):
 
         manifest_audio = os.path.join(self.base_manifest_path, '{}.tsv'.format(self.split+"_a"))
         manifest_text = os.path.join(self.base_manifest_path, '{}.tsv'.format(self.split+"_t"))
+        manifest_video = os.path.join(self.base_manifest_path, '{}.tsv'.format(self.split+"_v"))
        
         manifest_size = os.path.join(self.base_manifest_path, '{}.tsv'.format(self.split+"_size"))
         
@@ -106,9 +108,10 @@ class RawAudioTextDataset(FairseqDataset):
       
 
         inter_n=0
-        with open(manifest_audio, 'r') as f_a, open(manifest_text, 'r') as f_t:#, open(manifest_label, 'r') as f_l:
+        with open(manifest_audio, 'r') as f_a, open(manifest_text, 'r') as f_t, open(manifest_video, 'r') as f_v:#, open(manifest_label, 'r') as f_l:
             self.root_dir_a =os.path.join(self.data_args.data_raw , data_split ,'audio_token')     #f_a.readline().strip()
             self.root_dir_t =os.path.join(self.data_args.data_raw , data_split ,'text')   #f_t.readline().strip()
+            self.root_dir_v =os.path.join(self.data_args.data_raw , data_split ,'video')   #f_t.readline().strip()
 
          
 
@@ -117,12 +120,13 @@ class RawAudioTextDataset(FairseqDataset):
             #         self.root_dir_t =os.path.join('/hpc/gsir059/INTERSPEECH/iemocap_data' , data_split ,'text')   #f_t.readline().strip()
 
            
-            for line_a, line_t in zip(f_a,f_t):#,f_l):, line_l
+            for line_a, line_t, line_v in zip(f_a,f_t,f_v):#,f_l):, line_l
 
                 
            
                 items_a = line_a.strip().split('\t')
                 items_t = line_t.strip().split('\t')
+                items_v = line_v.strip().split('\t')
                
     
       
@@ -137,7 +141,7 @@ class RawAudioTextDataset(FairseqDataset):
         
 
                 # print(f"{items_a[0].split('.')[0]}; {items_t[0].split('.')[0]}")
-                assert items_a[0].split('.')[0] == items_t[0].split('.')[0] , f"misalignment of data: {items_a[0].split('.')[0]} == {items_t[0].split('.')[0]} - {manifest_audio} - {manifest_text}"
+                assert items_a[0].split('.')[0] == items_t[0].split('.')[0] == items_v[0].split('.')[0] , f"misalignment of data: {items_a[0].split('.')[0]} == {items_t[0].split('.')[0]} - {manifest_audio} - {manifest_text}"
 
 
     
@@ -154,6 +158,7 @@ class RawAudioTextDataset(FairseqDataset):
 
                     self.fnames_audio.append(items_a[0].replace('.wav','.txt'))
                     self.fnames_text.append(items_t[0])
+                    self.fnames_videoemb.append(items_v[0].replace('.mp4', '_ig65m.npy'))
                     self.sizes.append(int(self.audio_sizes.get(items_a[0].split('.')[0])))
                 
                 
@@ -168,6 +173,7 @@ class RawAudioTextDataset(FairseqDataset):
 
                         self.fnames_audio.append(items_a[0].replace('.wav','.txt'))
                         self.fnames_text.append(items_t[0])
+                        self.fnames_videoemb.append(items_v[0].replace('.mp4', '_ig65m.npy'))
                         self.sizes.append(int(self.audio_sizes.get(items_a[0].split('.')[0])))
 
    
@@ -221,10 +227,12 @@ class RawAudioTextDataset(FairseqDataset):
     
         audio_file = self.fnames_audio[index]
         text_file = self.fnames_text[index]
+        videoemb_file = self.fnames_videoemb[index]
        
 
         fname_a = os.path.join(self.root_dir_a, audio_file)
         fname_t = os.path.join(self.root_dir_t, text_file)
+        fname_v = os.path.join(self.root_dir_v, videoemb_file)
 
      
         file_name = audio_file.replace('.txt','')
@@ -255,13 +263,19 @@ class RawAudioTextDataset(FairseqDataset):
                 words.extend(line.strip().split('\t'))
         tokensized_audio = [int(word) for word in words]
         tokensized_audio = torch.from_numpy(np.array(tokensized_audio))
-
+        
+        embedded_video = torch.zeros(512)
+        if os.path.isfile(fname_v):
+            d = np.load(fname_v)
+            if len(d.shape) == 2:
+                embedded_video = torch.from_numpy(d[0, ])
 
    
         return {
             'id': index,
             'text': tokensized_text,
             'audio_token':tokensized_audio,
+            'embedded_video':embedded_video,
             'target' : label,
         }
 
@@ -357,6 +371,7 @@ class RawAudioTextDataset(FairseqDataset):
             'net_input': {
                 'audio': collated_audio_tokens, 
                 'text': collated_text, 
+                'embedded_video': torch.stack([s['embedded_video'] for s in samples])
             },
             #'target': torch.LongTensor([int(s['target']) for s in samples])
             'target': torch.FloatTensor([float(s['target']) for s in samples]) #onlt mosei

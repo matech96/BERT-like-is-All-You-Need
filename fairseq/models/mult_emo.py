@@ -187,6 +187,8 @@ class RobertaEMOModel(FairseqLanguageModel):
 
             #Audio SSL feature extraction [2, 512, 310] B X D X T
 
+        # if self.args.v_only or self.args.all_in:
+        #     data_dict['Video']=src_tokens['embedded_video']
 
     
         if classification_head_name is not None:
@@ -196,6 +198,8 @@ class RobertaEMOModel(FairseqLanguageModel):
 
         #This will output the main models whole features as well as token features
         x, extra = self.decoder(data_dict,features_only, return_all_hiddens, **kwargs) #here the decoder means the encoder (to have the interface fixed)
+        if True: # self.args.v_only or self.args.all_in:
+            extra['j_video'] = src_tokens['embedded_video']
 
         
         if classification_head_name is not None:
@@ -379,8 +383,10 @@ class RobertaEMOClassificationHead(nn.Module):
         T=features['j_text']
 
         A=features['j_aud']
+
+        V=features['j_video']
       
-        Final=torch.cat((T,A),dim=1)
+        Final=torch.cat((T,A,V),dim=1)
         
 
     
@@ -484,11 +490,12 @@ def robertaEMO_large_architecture(args):
     args.encoder_layers = getattr(args, 'encoder_layers', 24)
     args.encoder_layers_cross = getattr(args, 'encoder_layers_cross', 1)
     args.encoder_embed_dim = getattr(args, 'encoder_embed_dim', 1024) 
-    args.encoder_embed_dim_concat = getattr(args, 'encoder_embed_dim_concat',1792 )  #2048(1024 + 512 + 256)
+    # args.encoder_embed_dim_concat = getattr(args, 'encoder_embed_dim_concat',1792 )  #2048(1024 + 512 + 256) # audio and text
+    args.encoder_embed_dim_concat = getattr(args, 'encoder_embed_dim_concat',2304 )  #2048(1024 + 512 + 256) # all
     #args.encoder_embed_dim_concat = getattr(args, 'encoder_embed_dim_concat',1280 )  #2048(1024 + 512 + 256) #audio only
     args.encoder_embed_dim_t = getattr(args, 'encoder_embed_dim_t', 1024) 
     args.encoder_embed_dim_a = getattr(args, 'encoder_embed_dim_a', 768) 
-    args.encoder_embed_dim_v = getattr(args, 'encoder_embed_dim_v', 256) 
+    args.encoder_embed_dim_v = getattr(args, 'encoder_embed_dim_v', 512) 
     args.encoder_ffn_embed_dim = getattr(args, 'encoder_ffn_embed_dim', 1024) #previously this was 1024
     args.encoder_attention_heads = getattr(args, 'encoder_attention_heads', 16)
 

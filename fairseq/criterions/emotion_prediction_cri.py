@@ -19,7 +19,7 @@ from fairseq.criterions import FairseqCriterion, register_criterion
 from sklearn.metrics import classification_report
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import precision_recall_fscore_support
-from sklearn.metrics import accuracy_score, f1_score
+from sklearn.metrics import accuracy_score, f1_score, mean_absolute_error
 
 
 @register_criterion('emotion_prediction_cri') #This help to find the loss function acording to the task
@@ -81,6 +81,7 @@ class EmotionPredictionCriterion(FairseqCriterion):
             features_only=True,
             classification_head_name='emotion_classification_head',
         )
+        # logits = logits.mean()
 
 
     
@@ -98,9 +99,8 @@ class EmotionPredictionCriterion(FairseqCriterion):
         if self.regression_target_mos:
     
             logits = logits.squeeze().float()
-            targets = targets.float()
+            targets = targets.squeeze().float()
 
-        
             loss = F.l1_loss(
                 logits,
                 targets,
@@ -131,7 +131,9 @@ class EmotionPredictionCriterion(FairseqCriterion):
                 'ntokens': sample_size,#sample['ntokens'],
                 'nsentences': sample_size,
                 'sample_size': sample_size,
-                'ncorrect':ncorrect
+                'ncorrect':ncorrect,
+                'test_preds_a7': test_preds_a7,
+                'test_truth_a7': test_truth_a7
             }
 
          
@@ -195,7 +197,7 @@ class EmotionPredictionCriterion(FairseqCriterion):
 
     
             
-
+            print(loss.shape)
             loss = F.nll_loss(
                 F.log_softmax(logits, dim=-1, dtype=torch.float32),
                 targets,
@@ -349,6 +351,8 @@ class EmotionPredictionCriterion(FairseqCriterion):
         if 'pred_mos' in logging_outputs[0]:
             pred_mos= np.asarray([log.get('pred_mos', 0) for log in logging_outputs])
             truth_mos= np.asarray([log.get('truth_mos', 0) for log in logging_outputs])
+            pred_score= np.asarray([log.get('test_preds_a7', 0).cpu().numpy() for log in logging_outputs])
+            truth_score= np.asarray([log.get('test_truth_a7', 0).cpu().numpy() for log in logging_outputs])
 
             f1_mos = f1_score(truth_mos, pred_mos, average='weighted')
             acc_mos = accuracy_score(truth_mos, pred_mos)
@@ -356,6 +360,8 @@ class EmotionPredictionCriterion(FairseqCriterion):
             ncorrect_ba = sum(log.get('ncorrect_binary', 0) for log in logging_outputs)
     
             metrics.log_scalar('binary-accuracy', 100*acc_mos, nsentences, round=3)
+            metrics.log_scalar('f1', f1_mos, nsentences, round=3)
+            metrics.log_scalar('mae', mean_absolute_error(pred_score, truth_score), nsentences, round=3)
             metrics.log_scalar('ba-accuracy', 100.0 * ncorrect_ba / nsentences, nsentences, round=3)
 
 
