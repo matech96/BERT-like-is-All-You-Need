@@ -1,6 +1,7 @@
 #change the line 331
 
 import os
+from pathlib import Path
 import numpy as np
 import sys
 import torch
@@ -10,9 +11,15 @@ import random
 
 import cv2
 from PIL import Image
-from torchvision.transforms import CenterCrop, Resize, Compose, ToTensor
+from torchvision import transforms
+# from torchvision.transforms import CenterCrop, Resize, Compose, ToTensor
 
 import time
+
+from einops.layers.torch import Rearrange, Reduce
+from ig65m.models import r2plus1d_34_32_ig65m
+from ig65m.datasets import VideoDataset
+from ig65m.transforms import Normalize, ToTensor, Resize
 
 class RawAudioTextDataset(FairseqDataset):
 
@@ -158,7 +165,7 @@ class RawAudioTextDataset(FairseqDataset):
 
                     self.fnames_audio.append(items_a[0].replace('.wav','.txt'))
                     self.fnames_text.append(items_t[0])
-                    self.fnames_videoemb.append(items_v[0].replace('.mp4', '_ig65m.npy'))
+                    self.fnames_videoemb.append(items_v[0]) # .replace('.mp4', '_ig65m.npy')
                     self.sizes.append(int(self.audio_sizes.get(items_a[0].split('.')[0])))
                 
                 
@@ -173,7 +180,7 @@ class RawAudioTextDataset(FairseqDataset):
 
                         self.fnames_audio.append(items_a[0].replace('.wav','.txt'))
                         self.fnames_text.append(items_t[0])
-                        self.fnames_videoemb.append(items_v[0].replace('.mp4', '_ig65m.npy'))
+                        self.fnames_videoemb.append(items_v[0]) # .replace('.mp4', '_ig65m.npy')
                         self.sizes.append(int(self.audio_sizes.get(items_a[0].split('.')[0])))
 
    
@@ -215,7 +222,15 @@ class RawAudioTextDataset(FairseqDataset):
       
    
         self.shuffle = shuffle
-
+        
+        self.transform = transforms.Compose([
+            ToTensor(),
+            Rearrange("t h w c -> c t h w"),
+            # transforms.ToPILImage(),
+            Resize(112),
+            # transforms.ToTensor(),
+            Normalize(mean=[0.43216, 0.394666, 0.37645], std=[0.22803, 0.22145, 0.216989]),
+        ])
 
 
 
@@ -264,18 +279,31 @@ class RawAudioTextDataset(FairseqDataset):
         tokensized_audio = [int(word) for word in words]
         tokensized_audio = torch.from_numpy(np.array(tokensized_audio))
         
-        embedded_video = torch.zeros(512)
+        # embedded_video = torch.zeros(512)
+        # if os.path.isfile(fname_v):
+        #     d = np.load(fname_v)
+        #     if len(d.shape) == 2:
+        #         embedded_video = torch.from_numpy(d[0, ])
+
         if os.path.isfile(fname_v):
-            d = np.load(fname_v)
-            if len(d.shape) == 2:
-                embedded_video = torch.from_numpy(d[0, ])
+            video_ds = VideoDataset(Path(fname_v), clip=16, transform=self.transform) # 32
+            if video_ds.last >= video_ds.clip:
+                it = iter(video_ds)
+                video = next(it)
+            else:
+                print(f"The video ({fname_v}) is too short ({video_ds.last})!")
+                video = torch.zeros(3, 16, 112, 112)
+        else:
+            print(f"video {fname_v} does not exist!")
+            video = torch.zeros(3, 16, 112, 112)
 
    
         return {
             'id': index,
             'text': tokensized_text,
             'audio_token':tokensized_audio,
-            'embedded_video':embedded_video,
+            # 'embedded_video':embedded_video,
+            'video': video,
             'target' : label,
         }
 
@@ -371,7 +399,8 @@ class RawAudioTextDataset(FairseqDataset):
             'net_input': {
                 'audio': collated_audio_tokens, 
                 'text': collated_text, 
-                'embedded_video': torch.stack([s['embedded_video'] for s in samples])
+                'video': torch.stack([s['video'] for s in samples]),
+                # 'embedded_video': torch.stack([s['embedded_video'] for s in samples])
             },
             #'target': torch.LongTensor([int(s['target']) for s in samples])
             'target': torch.FloatTensor([float(s['target']) for s in samples]) #onlt mosei

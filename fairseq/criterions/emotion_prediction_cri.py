@@ -101,6 +101,7 @@ class EmotionPredictionCriterion(FairseqCriterion):
             logits = logits.squeeze().float()
             targets = targets.squeeze().float()
 
+        
             loss = F.l1_loss(
                 logits,
                 targets,
@@ -197,7 +198,7 @@ class EmotionPredictionCriterion(FairseqCriterion):
 
     
             
-            print(loss.shape)
+
             loss = F.nll_loss(
                 F.log_softmax(logits, dim=-1, dtype=torch.float32),
                 targets,

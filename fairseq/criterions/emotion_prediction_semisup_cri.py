@@ -19,7 +19,7 @@ from fairseq.criterions import FairseqCriterion, register_criterion
 from sklearn.metrics import classification_report
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import precision_recall_fscore_support
-from sklearn.metrics import accuracy_score, f1_score, mean_absolute_error
+from sklearn.metrics import accuracy_score, f1_score
 
 
 @register_criterion('emotion_prediction_semisup_cri') #This help to find the loss function acording to the task

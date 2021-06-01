@@ -31,6 +31,7 @@ from fairseq import checkpoint_utils
 import pdb
 from fairseq.models.roberta import RobertaModel
 
+from ig65mextract import VideoModel
 
 logger = logging.getLogger(__name__)
 #from .hub_interface import RobertaHubInterface
@@ -56,14 +57,14 @@ class RobertaEMOModel(FairseqLanguageModel):
         if self.args.a_only or self.args.all_in:
            
             # self.roberta_vqwav2vec = RobertaModel.from_pretrained('/hpc/gsir059/phd1st/trained_ssl/wav2vec/vq-wav2vec-Kmeans-Roberta', checkpoint_file='bert_kmeans.pt')
-            self.roberta_vqwav2vec = RobertaModel.from_pretrained('pretrained_ssl/roberta.large/', checkpoint_file='bert_kmeans.pt')
+            self.roberta_vqwav2vec = RobertaModel.from_pretrained('pretrained_ssl/roberta.large/', checkpoint_file='bert_kmeans.pt').to('cuda:0')
 
             # for param in  self.roberta_vqwav2vec.parameters():
             #     param.requires_grad = False
 
 
         if self.args.t_only or self.args.all_in:
-            roberta = torch.hub.load('pytorch/fairseq', 'roberta.large')
+            roberta = torch.hub.load('pytorch/fairseq', 'roberta.large').to('cuda:1')
 
         
             ########################### Freezing pretrained SSL paramtere###################################
@@ -71,6 +72,8 @@ class RobertaEMOModel(FairseqLanguageModel):
             # for param in self.model_text2vec.parameters():
             #     param.requires_grad = False
 
+        if self.args.v_only or self.args.all_in:
+            self.model_ig65m = VideoModel().to('cuda:2')
 
 
 
@@ -167,30 +170,32 @@ class RobertaEMOModel(FairseqLanguageModel):
         data_dict['raw_data']=src_tokens
 
         if self.args.t_only or self.args.all_in:
-            tokens_text=src_tokens['text']
+            tokens_text=src_tokens['text'].to('cuda:0')
         
 
             #Text SSL feature extraction  # [2, 100, 1024] B X T X D
             roberta_feature=self.model_text2vec.extract_features(tokens_text)
-            data_dict['Text']=roberta_feature
+            data_dict['Text']=roberta_feature.to('cuda:0')
         
                 
 
         if self.args.a_only or self.args.all_in:
-            tokens_audio=src_tokens['audio']
+            tokens_audio=src_tokens['audio'].to('cuda:1')
 
 
             roberta_vqwav2vec_feature=self.roberta_vqwav2vec.extract_features(tokens_audio)
     
-            data_dict['Audio']=roberta_vqwav2vec_feature
+            data_dict['Audio']=roberta_vqwav2vec_feature.to('cuda:0')
     
 
             #Audio SSL feature extraction [2, 512, 310] B X D X T
 
-        # if self.args.v_only or self.args.all_in:
-        #     data_dict['Video']=src_tokens['embedded_video']
+        if self.args.v_only or self.args.all_in:
+            with torch.no_grad():
+                tokens_video = src_tokens['video'].to('cuda:2')
 
-    
+                data_dict['Video'] = self.model_ig65m(tokens_video).to('cuda:0')
+
         if classification_head_name is not None:
             features_only = True
 
@@ -198,8 +203,8 @@ class RobertaEMOModel(FairseqLanguageModel):
 
         #This will output the main models whole features as well as token features
         x, extra = self.decoder(data_dict,features_only, return_all_hiddens, **kwargs) #here the decoder means the encoder (to have the interface fixed)
-        if True: # self.args.v_only or self.args.all_in:
-            extra['j_video'] = src_tokens['embedded_video']
+        # if self.args.v_only or self.args.all_in:
+        #     extra['j_video'] = src_tokens['embedded_video']
 
         
         if classification_head_name is not None:
@@ -234,7 +239,7 @@ class RobertaEMOModel(FairseqLanguageModel):
             self.args.pooler_activation_fn,
             self.args.pooler_dropout,
             self.args
-        )
+        ).to('cuda:0')
 
     @property
     def supported_targets(self):
@@ -384,15 +389,17 @@ class RobertaEMOClassificationHead(nn.Module):
 
         A=features['j_aud']
 
-        V=features['j_video']
+        if 'j_video' in features:
+            V=features['j_video']
       
-        Final=torch.cat((T,A,V),dim=1)
+            Final=torch.cat((T,A,V),dim=1)
+        else:
+            Final=torch.cat((T,A),dim=1)
         
 
     
         x =Final# features[:, 0, :]  # take <s> token (equiv. to [CLS])
         x = self.dropout(x)
-        # print(x.shape, (self.out_proj.in_features, self.out_proj.out_features))
         x = self.out_proj(x)
        
         return x
@@ -435,7 +442,7 @@ class RobertaEMOEncoder(FairseqDecoder):
             activation_fn=args.activation_fn,
             is_only_text=args.t_only,
             is_only_audio=args.a_only,
-            #is_only_video=args.v_only,
+            is_only_video=args.v_only,
             is_all_in=args.all_in,
             is_stack_up=args.stack_up
 
@@ -490,8 +497,8 @@ def robertaEMO_large_architecture(args):
     args.encoder_layers = getattr(args, 'encoder_layers', 24)
     args.encoder_layers_cross = getattr(args, 'encoder_layers_cross', 1)
     args.encoder_embed_dim = getattr(args, 'encoder_embed_dim', 1024) 
-    # args.encoder_embed_dim_concat = getattr(args, 'encoder_embed_dim_concat',1792 )  #2048(1024 + 512 + 256) # audio and text
-    args.encoder_embed_dim_concat = getattr(args, 'encoder_embed_dim_concat',2304 )  #2048(1024 + 512 + 256) # all
+    args.encoder_embed_dim_concat = getattr(args, 'encoder_embed_dim_concat',1792 )  #2048(1024 + 512 + 256) # audio and text
+    # args.encoder_embed_dim_concat = getattr(args, 'encoder_embed_dim_concat',2304 )  #2048(1024 + 512 + 256) # all
     #args.encoder_embed_dim_concat = getattr(args, 'encoder_embed_dim_concat',1280 )  #2048(1024 + 512 + 256) #audio only
     args.encoder_embed_dim_t = getattr(args, 'encoder_embed_dim_t', 1024) 
     args.encoder_embed_dim_a = getattr(args, 'encoder_embed_dim_a', 768) 
