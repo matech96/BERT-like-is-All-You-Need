@@ -52,7 +52,7 @@ class Trainer(object):
             self._criterion = self._criterion.half()
             self._model = self._model.half()
         self._criterion = self._criterion.to(device=self.device)
-        self._model = self._model.to(device=self.device)
+        # self._model = self._model.to(device=self.device)
 
         self._dummy_batch = "DUMMY"  # indicates we don't have a dummy batch at first
         self._lr_scheduler = None
@@ -407,11 +407,11 @@ class Trainer(object):
                 self.optimizer.multiply_grads(num / sample_size)
 
             # clip grads
-            grad_norm = self.clip_grad_norm(self.args.clip_norm)
+            # grad_norm = self.clip_grad_norm(self.args.clip_norm)
 
             # check that grad norms are consistent across workers
-            if not self.args.use_bmuf:
-                self._check_grad_norms(grad_norm)
+            # if not self.args.use_bmuf:
+            #     self._check_grad_norms(grad_norm)
 
             # take an optimization step
             self.optimizer.step()
@@ -419,7 +419,7 @@ class Trainer(object):
 
             # log stats
             logging_output = self._reduce_and_log_stats(
-                logging_outputs, sample_size, grad_norm,
+                logging_outputs, sample_size, None, # grad_norm,
             )
 
             # clear CUDA cache to reduce memory fragmentation

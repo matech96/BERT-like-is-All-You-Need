@@ -56,14 +56,14 @@ class RobertaEMOModel(FairseqLanguageModel):
         if self.args.a_only or self.args.all_in:
            
             # self.roberta_vqwav2vec = RobertaModel.from_pretrained('/hpc/gsir059/phd1st/trained_ssl/wav2vec/vq-wav2vec-Kmeans-Roberta', checkpoint_file='bert_kmeans.pt')
-            self.roberta_vqwav2vec = RobertaModel.from_pretrained('pretrained_ssl/roberta.large/', checkpoint_file='bert_kmeans.pt')
+            self.roberta_vqwav2vec = RobertaModel.from_pretrained('pretrained_ssl/roberta.large/', checkpoint_file='bert_kmeans.pt').to('cuda:0')
 
             # for param in  self.roberta_vqwav2vec.parameters():
             #     param.requires_grad = False
 
 
         if self.args.t_only or self.args.all_in:
-            roberta = torch.hub.load('pytorch/fairseq', 'roberta.large')
+            roberta = torch.hub.load('pytorch/fairseq', 'roberta.large').to('cuda:1')
 
         
             ########################### Freezing pretrained SSL paramtere###################################
@@ -167,22 +167,22 @@ class RobertaEMOModel(FairseqLanguageModel):
         data_dict['raw_data']=src_tokens
 
         if self.args.t_only or self.args.all_in:
-            tokens_text=src_tokens['text']
-        
+            tokens_text=src_tokens['text'].to('cuda:0')
+
 
             #Text SSL feature extraction  # [2, 100, 1024] B X T X D
             roberta_feature=self.model_text2vec.extract_features(tokens_text)
-            data_dict['Text']=roberta_feature
+            data_dict['Text']=roberta_feature.to('cuda:0')
         
                 
 
         if self.args.a_only or self.args.all_in:
-            tokens_audio=src_tokens['audio']
+            tokens_audio=src_tokens['audio'].to('cuda:1')
 
 
             roberta_vqwav2vec_feature=self.roberta_vqwav2vec.extract_features(tokens_audio)
-    
-            data_dict['Audio']=roberta_vqwav2vec_feature
+
+            data_dict['Audio']=roberta_vqwav2vec_feature.to('cuda:0')
     
 
             #Audio SSL feature extraction [2, 512, 310] B X D X T
@@ -234,7 +234,7 @@ class RobertaEMOModel(FairseqLanguageModel):
             self.args.pooler_activation_fn,
             self.args.pooler_dropout,
             self.args
-        )
+        ).to('cuda:0')
 
     @property
     def supported_targets(self):

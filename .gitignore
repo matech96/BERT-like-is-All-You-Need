@@ -6,3 +6,4 @@ iemocap_org/*
 build/*
 mosi_data/*
 *.zip
+.workspace/*
