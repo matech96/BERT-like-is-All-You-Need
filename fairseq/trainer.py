@@ -52,6 +52,9 @@ class Trainer(object):
             self._criterion = self._criterion.half()
             self._model = self._model.half()
         self._criterion = self._criterion.to(device=self.device)
+        self._model = self._model.to(device=self.device)
+        # self._model.roberta_vqwav2vec = self._model.roberta_vqwav2vec.to('cuda:0')
+        # self._model.model_text2vec = self._model.model_text2vec.to('cuda:1')
         # self._model = self._model.to(device=self.device)
 
         self._dummy_batch = "DUMMY"  # indicates we don't have a dummy batch at first

@@ -56,14 +56,14 @@ class RobertaEMOModel(FairseqLanguageModel):
         if self.args.a_only or self.args.all_in:
            
             # self.roberta_vqwav2vec = RobertaModel.from_pretrained('/hpc/gsir059/phd1st/trained_ssl/wav2vec/vq-wav2vec-Kmeans-Roberta', checkpoint_file='bert_kmeans.pt')
-            self.roberta_vqwav2vec = RobertaModel.from_pretrained('pretrained_ssl/roberta.large/', checkpoint_file='bert_kmeans.pt').to('cuda:0')
+            self.roberta_vqwav2vec = RobertaModel.from_pretrained('pretrained_ssl/roberta.large/', checkpoint_file='bert_kmeans.pt')#.to('cuda:0')
 
             # for param in  self.roberta_vqwav2vec.parameters():
             #     param.requires_grad = False
 
 
         if self.args.t_only or self.args.all_in:
-            roberta = torch.hub.load('pytorch/fairseq', 'roberta.large').to('cuda:1')
+            roberta = torch.hub.load('pytorch/fairseq', 'roberta.large')#.to('cuda:1')
 
         
             ########################### Freezing pretrained SSL paramtere###################################
