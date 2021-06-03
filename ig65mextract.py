@@ -22,7 +22,7 @@ class VideoModel(nn.Module):
     def __init__(self, pool_spatial="mean", pool_temporal="mean"):
         super().__init__()
 
-        self.model = r2plus1d_34_32_ig65m(num_classes=359, pretrained=True, progress=True).to('cuda:2')
+        self.model = r2plus1d_34_32_ig65m(num_classes=359, pretrained=True, progress=True)#.to('cuda:2')
 
         self.pool_spatial = Reduce("n c t h w -> n c t", reduction=pool_spatial)
         self.pool_temporal = Reduce("n c t -> n c", reduction=pool_temporal)
