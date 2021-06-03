@@ -179,7 +179,7 @@ class RobertaEMOModel(FairseqLanguageModel):
                 
 
         if self.args.a_only or self.args.all_in:
-            tokens_audio=src_tokens['audio'].to('cuda:1')
+            tokens_audio=src_tokens['audio']#.to('cuda:1')
 
 
             roberta_vqwav2vec_feature=self.roberta_vqwav2vec.extract_features(tokens_audio)
