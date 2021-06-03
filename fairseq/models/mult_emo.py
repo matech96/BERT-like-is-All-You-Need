@@ -31,6 +31,7 @@ from fairseq import checkpoint_utils
 import pdb
 from fairseq.models.roberta import RobertaModel
 
+from ig65mextract import VideoModel
 
 logger = logging.getLogger(__name__)
 #from .hub_interface import RobertaHubInterface
@@ -72,7 +73,8 @@ class RobertaEMOModel(FairseqLanguageModel):
             #     param.requires_grad = False
 
 
-
+        if self.args.v_only or self.args.all_in:
+            self.model_ig65m = VideoModel()
 
        
 
@@ -187,8 +189,10 @@ class RobertaEMOModel(FairseqLanguageModel):
 
             #Audio SSL feature extraction [2, 512, 310] B X D X T
 
-        # if self.args.v_only or self.args.all_in:
-        #     data_dict['Video']=src_tokens['embedded_video']
+        if self.args.v_only or self.args.all_in:
+            tokens_video = src_tokens['video']#.to('cuda:2')
+
+            data_dict['Video'] = self.model_ig65m(tokens_video)#.to('cuda:0')
 
     
         if classification_head_name is not None:
@@ -198,8 +202,8 @@ class RobertaEMOModel(FairseqLanguageModel):
 
         #This will output the main models whole features as well as token features
         x, extra = self.decoder(data_dict,features_only, return_all_hiddens, **kwargs) #here the decoder means the encoder (to have the interface fixed)
-        if True: # self.args.v_only or self.args.all_in:
-            extra['j_video'] = src_tokens['embedded_video']
+        # if True: # self.args.v_only or self.args.all_in:
+        #     extra['j_video'] = src_tokens['embedded_video']
 
         
         if classification_head_name is not None:
@@ -384,9 +388,12 @@ class RobertaEMOClassificationHead(nn.Module):
 
         A=features['j_aud']
 
-        V=features['j_video']
-      
-        Final=torch.cat((T,A,V),dim=1)
+        if 'j_video' in features:
+            V=features['j_video']
+
+            Final=torch.cat((T,A,V),dim=1)
+        else:
+            Final=torch.cat((T,A),dim=1)
         
 
     
@@ -435,7 +442,7 @@ class RobertaEMOEncoder(FairseqDecoder):
             activation_fn=args.activation_fn,
             is_only_text=args.t_only,
             is_only_audio=args.a_only,
-            #is_only_video=args.v_only,
+            is_only_video=args.v_only,
             is_all_in=args.all_in,
             is_stack_up=args.stack_up
 

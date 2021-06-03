@@ -70,6 +70,7 @@
                 "--regression-target-mos",
                 "--a-only",
                 "--t-only",
+                "--v-only",
                 "--pooler-dropout",
                 "0.2",
                 "--log-interval",

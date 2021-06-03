@@ -88,7 +88,7 @@ class TransformerMultiEncoder(nn.Module):  #We might not need this part since we
         export: bool = False,
         is_only_text: bool=False,
         is_only_audio: bool=False,
-        #is_only_video: bool=False,
+        is_only_video: bool=False,
         is_all_in: bool=False,
         is_stack_up:bool=False, #telling whether we are to add more layers on top of SSL representation
     ) -> None:
@@ -112,7 +112,7 @@ class TransformerMultiEncoder(nn.Module):  #We might not need this part since we
 
         self.only_t=is_only_text
         self.only_a=is_only_audio
-        #self.only_v=is_only_video
+        self.only_v=is_only_video
         self.all_in=is_all_in
 
         self.embed_scale = embed_scale
@@ -283,7 +283,9 @@ class TransformerMultiEncoder(nn.Module):  #We might not need this part since we
             j_text=x_t[:, 0, :] #text embeddigs
             seq_rep.update({'j_text' : j_text})       
 
-       
+        
+        if (self.all_in) or (self.only_v):
+            seq_rep.update({'j_video' : multi_modal_features['Video']})
 
     
        
