@@ -49,8 +49,8 @@ def main(args, override_args=None):
     for model in models:
         if use_fp16:
             model.half()
-        # if use_cuda:
-        #     model.cuda()
+        if use_cuda:
+            model.cuda()
 
     # Print args
     logger.info(model_args)
