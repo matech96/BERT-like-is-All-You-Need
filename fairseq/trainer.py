@@ -196,6 +196,10 @@ class Trainer(object):
 
             # load model parameters
             try:
+                with torch.no_grad():
+                    self.get_model().classification_heads['emotion_classification_head'].out_proj.weight[:, :1792] = state["model"]['classification_heads.emotion_classification_head.out_proj.weight']
+                    self.get_model().classification_heads['emotion_classification_head'].out_proj.weight[:, 1792:] = 0
+                    self.get_model().classification_heads['emotion_classification_head'].out_proj.bias[:] = state["model"]['classification_heads.emotion_classification_head.out_proj.bias']
                 self.get_model().load_state_dict(
                     state["model"], strict=False, args=self.args
                 )

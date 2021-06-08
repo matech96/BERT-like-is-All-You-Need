@@ -14,7 +14,7 @@
             "args": ["--data",
                 "./T_data/mosi",
                 "--restore-file",
-                "None",
+                "checkpoints/checkpoint_at.pt",
                 "--task",
                 "emotion_prediction",
                 "--reset-optimizer",
