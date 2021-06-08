@@ -169,22 +169,24 @@ class RobertaEMOModel(FairseqLanguageModel):
         data_dict['raw_data']=src_tokens
 
         if self.args.t_only or self.args.all_in:
-            tokens_text=src_tokens['text']#.to('cuda:0')
+            with torch.no_grad():
+                tokens_text=src_tokens['text']#.to('cuda:0')
 
 
-            #Text SSL feature extraction  # [2, 100, 1024] B X T X D
-            roberta_feature=self.model_text2vec.extract_features(tokens_text)
-            data_dict['Text']=roberta_feature#.to('cuda:0')
+                #Text SSL feature extraction  # [2, 100, 1024] B X T X D
+                roberta_feature=self.model_text2vec.extract_features(tokens_text)
+                data_dict['Text']=roberta_feature#.to('cuda:0')
         
                 
 
         if self.args.a_only or self.args.all_in:
-            tokens_audio=src_tokens['audio']#.to('cuda:1')
+            with torch.no_grad():
+                tokens_audio=src_tokens['audio']#.to('cuda:1')
 
 
-            roberta_vqwav2vec_feature=self.roberta_vqwav2vec.extract_features(tokens_audio)
+                roberta_vqwav2vec_feature=self.roberta_vqwav2vec.extract_features(tokens_audio)
 
-            data_dict['Audio']=roberta_vqwav2vec_feature#.to('cuda:0')
+                data_dict['Audio']=roberta_vqwav2vec_feature#.to('cuda:0')
     
 
             #Audio SSL feature extraction [2, 512, 310] B X D X T
