@@ -134,9 +134,10 @@ class Trainer(object):
         params = list(
             filter(
                 lambda p: p.requires_grad,
-                chain(self.model.parameters(), self.criterion.parameters()),
+                chain(self.model.decoder.parameters(), self.model.model_ig65m.parameters(), self.model.model_text2vec.parameters(), self.model.roberta_vqwav2vec.parameters(), self.criterion.parameters()),
             )
         )
+        params = [{'params': params}, {'params': self.model.classification_heads.parameters(), 'lr': self.args.lr[0] / 10}]
 
         if self.args.fp16:
             if self.cuda and torch.cuda.get_device_capability(0)[0] < 7:
@@ -196,10 +197,6 @@ class Trainer(object):
 
             # load model parameters
             try:
-                with torch.no_grad():
-                    self.get_model().classification_heads['emotion_classification_head'].out_proj.weight[:, :1792] = state["model"]['classification_heads.emotion_classification_head.out_proj.weight']
-                    self.get_model().classification_heads['emotion_classification_head'].out_proj.weight[:, 1792:] = 0
-                    self.get_model().classification_heads['emotion_classification_head'].out_proj.bias[:] = state["model"]['classification_heads.emotion_classification_head.out_proj.bias']
                 self.get_model().load_state_dict(
                     state["model"], strict=False, args=self.args
                 )
