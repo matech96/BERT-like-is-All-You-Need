@@ -139,6 +139,8 @@ class RobertaEMOModel(FairseqLanguageModel):
                             help='do you need to freez text')
         parser.add_argument('--a-no-train', action='store_true', default=False,
                             help='do you need to freez text')
+        parser.add_argument('--smaller-fc-lr', action='store_true', default=False,
+                            help='reduce the learning rate for the fc layer at the end of the network by a factor of 10')
 
         parser.add_argument('--all-in', action='store_true', default=False,
                                     help='do you need all the embeddings')

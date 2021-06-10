@@ -131,13 +131,21 @@ class Trainer(object):
         return self._lr_scheduler
 
     def _build_optimizer(self):
-        params = list(
-            filter(
-                lambda p: p.requires_grad,
-                chain(self.model.decoder.parameters(), self.model.model_ig65m.parameters(), self.model.model_text2vec.parameters(), self.model.roberta_vqwav2vec.parameters(), self.criterion.parameters()),
+        if self.args.smaller_fc_lr:
+            params = list(
+                filter(
+                    lambda p: p.requires_grad,
+                    chain(self.model.decoder.parameters(), self.model.model_ig65m.parameters(), self.model.model_text2vec.parameters(), self.model.roberta_vqwav2vec.parameters(), self.criterion.parameters()),
+                )
             )
-        )
-        params = [{'params': params}, {'params': self.model.classification_heads.parameters(), 'lr': self.args.lr[0] / 10}]
+            params = [{'params': params}, {'params': self.model.classification_heads.parameters(), 'lr': self.args.lr[0] / 10}]
+        else:
+            params = list(
+                filter(
+                    lambda p: p.requires_grad,
+                    chain(self.model.parameters(), self.criterion.parameters()),
+                )
+            )
 
         if self.args.fp16:
             if self.cuda and torch.cuda.get_device_capability(0)[0] < 7:
