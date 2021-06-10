@@ -132,7 +132,13 @@ class RobertaEMOModel(FairseqLanguageModel):
 
         parser.add_argument('--a-only', action='store_true', default=False,
                                     help='do you need only audio')
-
+                                    
+        parser.add_argument('--t-no-train', action='store_true', default=False,
+                            help='do you need to freez text')
+        parser.add_argument('--v-no-train', action='store_true', default=False,
+                            help='do you need to freez text')
+        parser.add_argument('--a-no-train', action='store_true', default=False,
+                            help='do you need to freez text')
 
         parser.add_argument('--all-in', action='store_true', default=False,
                                     help='do you need all the embeddings')
@@ -169,18 +175,22 @@ class RobertaEMOModel(FairseqLanguageModel):
         data_dict['raw_data']=src_tokens
 
         if self.args.t_only or self.args.all_in:
-            with torch.no_grad():
+            def run_t():
                 tokens_text=src_tokens['text']#.to('cuda:0')
 
 
                 #Text SSL feature extraction  # [2, 100, 1024] B X T X D
                 roberta_feature=self.model_text2vec.extract_features(tokens_text)
                 data_dict['Text']=roberta_feature#.to('cuda:0')
-        
+            if self.args.t_no_train:
+                with torch.no_grad():
+                    run_t()
+            else:
+                run_t()
                 
 
         if self.args.a_only or self.args.all_in:
-            with torch.no_grad():
+            def run_a():
                 tokens_audio=src_tokens['audio']#.to('cuda:1')
 
 
@@ -188,13 +198,25 @@ class RobertaEMOModel(FairseqLanguageModel):
 
                 data_dict['Audio']=roberta_vqwav2vec_feature#.to('cuda:0')
     
+            if self.args.a_no_train:
+                with torch.no_grad():
+                    run_a()
+            else:
+                run_a()
 
             #Audio SSL feature extraction [2, 512, 310] B X D X T
 
         if self.args.v_only or self.args.all_in:
-            tokens_video = src_tokens['video']#.to('cuda:2')
+            def run_v():
+                tokens_video = src_tokens['video']#.to('cuda:2')
 
-            data_dict['Video'] = self.model_ig65m(tokens_video)#.to('cuda:0')
+                data_dict['Video'] = self.model_ig65m(tokens_video)#.to('cuda:0')
+            
+            if self.args.v_no_train:
+                with torch.no_grad():
+                    run_v()
+            else:
+                run_v()
 
     
         if classification_head_name is not None:
