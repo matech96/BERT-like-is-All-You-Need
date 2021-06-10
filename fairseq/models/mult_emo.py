@@ -523,8 +523,10 @@ def robertaEMO_large_architecture(args):
     args.encoder_layers = getattr(args, 'encoder_layers', 24)
     args.encoder_layers_cross = getattr(args, 'encoder_layers_cross', 1)
     args.encoder_embed_dim = getattr(args, 'encoder_embed_dim', 1024) 
-    # args.encoder_embed_dim_concat = getattr(args, 'encoder_embed_dim_concat',1792 )  #2048(1024 + 512 + 256) # audio and text
-    args.encoder_embed_dim_concat = getattr(args, 'encoder_embed_dim_concat',2304 )  #2048(1024 + 512 + 256) # all
+    if args.a_only and args.t_only:
+        args.encoder_embed_dim_concat = getattr(args, 'encoder_embed_dim_concat',1792 )  #2048(1024 + 512 + 256) # audio and text
+    if (args.a_only and args.t_only and args.v_only) or args.all_in:
+        args.encoder_embed_dim_concat = getattr(args, 'encoder_embed_dim_concat',2304 )  #2048(1024 + 512 + 256) # all
     #args.encoder_embed_dim_concat = getattr(args, 'encoder_embed_dim_concat',1280 )  #2048(1024 + 512 + 256) #audio only
     args.encoder_embed_dim_t = getattr(args, 'encoder_embed_dim_t', 1024) 
     args.encoder_embed_dim_a = getattr(args, 'encoder_embed_dim_a', 768) 
