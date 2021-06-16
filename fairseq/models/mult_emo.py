@@ -172,73 +172,73 @@ class RobertaEMOModel(FairseqLanguageModel):
 
     def forward(self, src_tokens, features_only=False, return_all_hiddens=False, classification_head_name=None, **kwargs):
         
-        with torch.no_grad():
-            data_dict={} #Create a dictionary with features
-            data_dict['raw_data']=src_tokens
 
-            if self.args.t_only or self.args.all_in:
-                def run_t():
-                    tokens_text=src_tokens['text']#.to('cuda:0')
+        data_dict={} #Create a dictionary with features
+        data_dict['raw_data']=src_tokens
+
+        if self.args.t_only or self.args.all_in:
+            def run_t():
+                tokens_text=src_tokens['text']#.to('cuda:0')
 
 
-                    #Text SSL feature extraction  # [2, 100, 1024] B X T X D
-                    roberta_feature=self.model_text2vec.extract_features(tokens_text)
-                    data_dict['Text']=roberta_feature#.to('cuda:0')
-                if self.args.t_no_train:
-                    with torch.no_grad():
-                        run_t()
-                else:
+                #Text SSL feature extraction  # [2, 100, 1024] B X T X D
+                roberta_feature=self.model_text2vec.extract_features(tokens_text)
+                data_dict['Text']=roberta_feature#.to('cuda:0')
+            if self.args.t_no_train:
+                with torch.no_grad():
                     run_t()
-                    
-
-            if self.args.a_only or self.args.all_in:
-                def run_a():
-                    tokens_audio=src_tokens['audio']#.to('cuda:1')
-
-
-                    roberta_vqwav2vec_feature=self.roberta_vqwav2vec.extract_features(tokens_audio)
-
-                    data_dict['Audio']=roberta_vqwav2vec_feature#.to('cuda:0')
-        
-                if self.args.a_no_train:
-                    with torch.no_grad():
-                        run_a()
-                else:
-                    run_a()
-
-                #Audio SSL feature extraction [2, 512, 310] B X D X T
-
-            if self.args.v_only or self.args.all_in:
-                def run_v():
-                    tokens_video = src_tokens['video']#.to('cuda:2')
-
-                    data_dict['Video'] = self.model_ig65m(tokens_video)#.to('cuda:0')
+            else:
+                run_t()
                 
-                if self.args.v_no_train:
-                    with torch.no_grad():
-                        run_v()
-                else:
+
+        if self.args.a_only or self.args.all_in:
+            def run_a():
+                tokens_audio=src_tokens['audio']#.to('cuda:1')
+
+
+                roberta_vqwav2vec_feature=self.roberta_vqwav2vec.extract_features(tokens_audio)
+
+                data_dict['Audio']=roberta_vqwav2vec_feature#.to('cuda:0')
+    
+            if self.args.a_no_train:
+                with torch.no_grad():
+                    run_a()
+            else:
+                run_a()
+
+            #Audio SSL feature extraction [2, 512, 310] B X D X T
+
+        if self.args.v_only or self.args.all_in:
+            def run_v():
+                tokens_video = src_tokens['video']#.to('cuda:2')
+
+                data_dict['Video'] = self.model_ig65m(tokens_video)#.to('cuda:0')
+            
+            if self.args.v_no_train:
+                with torch.no_grad():
                     run_v()
+            else:
+                run_v()
+
+    
+        if classification_head_name is not None:
+            features_only = True
 
         
-            if classification_head_name is not None:
-                features_only = True
 
-            
+        #This will output the main models whole features as well as token features
+        x, extra = self.decoder(data_dict,features_only, return_all_hiddens, **kwargs) #here the decoder means the encoder (to have the interface fixed)
+        # if True: # self.args.v_only or self.args.all_in:
+        #     extra['j_video'] = src_tokens['embedded_video']
 
-            #This will output the main models whole features as well as token features
-            x, extra = self.decoder(data_dict,features_only, return_all_hiddens, **kwargs) #here the decoder means the encoder (to have the interface fixed)
-            # if True: # self.args.v_only or self.args.all_in:
-            #     extra['j_video'] = src_tokens['embedded_video']
-
-            
-            if classification_head_name is not None:
-            
-                x = self.classification_heads[classification_head_name](extra) #Here we send the extracs ("First token")
-            
-            
         
-            return x, extra
+        if classification_head_name is not None:
+        
+            x = self.classification_heads[classification_head_name](extra) #Here we send the extracs ("First token")
+        
+        
+       
+        return x, extra
 
     def register_classification_head(self, name, num_classes=None, inner_dim=None, **kwargs):
         """Register a classification head."""
